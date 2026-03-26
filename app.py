@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, send_file
 import json
 import os
 import unicodedata
@@ -16,7 +16,6 @@ def carregar_banco():
         with open(ARQUIVO_BANCO, "r", encoding="utf-8") as f:
             return json.load(f)
     else:
-        # Retorna um banco padrão se o arquivo não existir
         return {
             "Gripe": ["Febre", "Tosse", "Cansaço"],
             "Resfriado": ["Coriza", "Tosse Leve", "Dor de Garganta"],
@@ -61,6 +60,43 @@ def adicionar():
     nome = dados.get("nome").capitalize()
     sintomas = [s.strip().capitalize() for s in dados.get("sintomas", [])]
     banco_de_dados[nome] = sintomas
+    salvar_banco(banco_de_dados)
+    return jsonify({"status": "sucesso"})
+
+@app.route('/listar')
+def listar():
+    return jsonify(banco_de_dados)
+
+@app.route('/editar', methods=['POST'])
+def editar():
+    dados = request.json
+    nome = dados.get("nome").capitalize()
+    novos_sintomas = [s.strip().capitalize() for s in dados.get("sintomas", [])]
+    if nome in banco_de_dados:
+        banco_de_dados[nome] = novos_sintomas
+        salvar_banco(banco_de_dados)
+        return jsonify({"status": "sucesso"})
+    return jsonify({"status": "erro", "msg": "Doença não encontrada"})
+
+@app.route('/excluir', methods=['POST'])
+def excluir():
+    dados = request.json
+    nome = dados.get("nome").capitalize()
+    if nome in banco_de_dados:
+        del banco_de_dados[nome]
+        salvar_banco(banco_de_dados)
+        return jsonify({"status": "sucesso"})
+    return jsonify({"status": "erro", "msg": "Doença não encontrada"})
+
+@app.route('/exportar')
+def exportar():
+    return send_file(ARQUIVO_BANCO, as_attachment=True)
+
+@app.route('/importar', methods=['POST'])
+def importar():
+    dados = request.json
+    global banco_de_dados
+    banco_de_dados = dados
     salvar_banco(banco_de_dados)
     return jsonify({"status": "sucesso"})
 

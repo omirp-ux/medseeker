@@ -2,37 +2,92 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Sistema de Diagnóstico</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>MedSeeker</title>
     <style>
-        body { font-family: Arial; padding: 20px; }
-        input, button { margin: 5px; padding: 10px; }
-        .resultado { margin-top: 20px; }
-    </style>
-    <link rel="manifest" href="/static/manifest.json">
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/static/service-worker.js');
-        });
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
         }
-    </script>
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .card {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            background: #f9f9f9;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        input, select {
+            padding: 8px;
+            margin: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: left;
+        }
+        th {
+            background: #f2f2f2;
+        }
+    </style>
 </head>
 <body>
-    <h1>Sistema de Diagnóstico por Sintomas</h1>
+    <div class="container">
+        <h1>🏥 MedSeeker</h1>
 
-    <label>Digite os sintomas (separados por vírgula):</label><br>
-    <input type="text" id="entrada_sintomas" placeholder="Ex: Febre, Tosse"><br>
+        <!-- Buscar Doenças -->
+        <div class="card">
+            <h2>🔍 Buscar Doenças</h2>
+            <input type="text" id="entrada_sintomas" placeholder="Ex: Febre, Tosse" style="width: 70%;">
+            <button onclick="buscar()">Buscar</button>
+            <div id="resultado_busca" class="resultado"></div>
+        </div>
 
-    <button onclick="buscar()">Buscar Doenças</button>
+        <!-- Adicionar Nova Doença -->
+        <div class="card">
+            <h2>➕ Adicionar Nova Doença</h2>
+            <input type="text" id="nova_doenca" placeholder="Nome da doença">
+            <input type="text" id="novos_sintomas" placeholder="Sintomas (separados por vírgula)">
+            <button onclick="adicionar()">Adicionar</button>
+        </div>
 
-    <div class="resultado" id="resultado"></div>
-
-    <hr>
-
-    <h2>Adicionar Nova Doença</h2>
-    <input type="text" id="nova_doenca" placeholder="Nome da doença">
-    <input type="text" id="novos_sintomas" placeholder="Sintomas (vírgula)">
-    <button onclick="adicionar()">Adicionar</button>
+ e Editar Doenças -->
+        <div class="card">
+            <h2>📋 Doenças Cadastradas</h2>
+            <button onclick="carregarDoencas()">Atualizar Lista</button>
+            <button onclick="exportarDados()">Exportar Dados</button>
+            <input type="file" id="arquivo_importar" accept=".json" onchange="importarDados()">
+            <div id="lista_doencas"></div>
+        </div>
+    </div>
 
     <script>
         function buscar() {
@@ -46,12 +101,12 @@
             })
             .then(response => response.json())
             .then(data => {
-                let html = "<ul>";
+                let html = "<table><tr><th>Doença</th><th>Probabilidade</th></tr>";
                 data.forEach(item => {
-                    html += `<li>${item.doenca}: ${item.probabilidade}%</li>`;
+                    html += `<tr><td>${item.doenca}</td><td>${item.probabilidade}%</td></tr>`;
                 });
-                html += "</ul>";
-                document.getElementById("resultado").innerHTML = html;
+                html += "</table>";
+                document.getElementById("resultado_busca").innerHTML = html;
             });
         }
 
@@ -64,8 +119,98 @@
                 headers: {"Content-Type": "application/json"},
                 body: JSON.stringify({nome, sintomas})
             })
-            .then(() => alert("Doença adicionada com sucesso!"));
+            .then(() => {
+                alert("Doença adicionada com sucesso!");
+                carregarDoencas();
+            });
         }
+
+        function carregarDoencas() {
+            fetch("/listar")
+            .then(response => response.json())
+            .then(data => {
+                let html = "<table><tr><th>Doença</th><th>Sintomas</th><th>Ações</th></tr>";
+                for (let doenca in data) {
+                    html += `<tr>
+                        <td>${doenca}</td>
+                        <td>${data[doenca].join(", ")}</td>
+                        <td>
+                            <button onclick="editar('${doenca}', ['${data[doenca].join("','")}'])">Editar</button>
+                            <button onclick="excluir('${doenca}')">Excluir</button>
+                        </td>
+                    </tr>`;
+                }
+                html += "</table>";
+                document.getElementById("lista_doencas").innerHTML = html;
+            });
+        }
+
+        function editar(nome, sintomas) {
+            const novos_sintomas = prompt("Edite os sintomas (separados por vírgula):", sintomas.join(", "));
+            if (novos_sintomas) {
+                fetch("/editar", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({nome, sintomas: novos_sintomas.split(",").map(s => s.trim())})
+                })
+                .then(() => {
+                    alert("Doença editada com sucesso!");
+                    carregarDoencas();
+                });
+            }
+        }
+
+        function excluir(nome) {
+            if (confirm(`Tem certeza que deseja excluir "${nome}"?`)) {
+                fetch("/excluir", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({nome})
+                })
+                .then(() => {
+                    alert("Doença excluída com sucesso!");
+                    carregarDoencas();
+                });
+            }
+        }
+
+        function exportarDados() {
+            fetch("/exportar")
+            .then(response => response.blob())
+            .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = "banco_de_dados.json";
+                a.click();
+            });
+        }
+
+        function importarDados() {
+            const input = document.getElementById("arquivo_importar");
+            const file = input.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const dados = JSON.parse(e.target.result);
+                    fetch("/importar", {
+                        method: "POST",
+                        headers: {"Content-Type": "application/json"},
+                        body: JSON.stringify(dados)
+                    })
+                    .then(() => {
+                        alert("Dados importados com sucesso!");
+                        carregarDoencas();
+                    });
+                };
+                reader.readAsText(file);
+            }
+        }
+
+        // Carregar doenças ao abrir a página
+        window.onload = function() {
+            carregarDoencas();
+        };
     </script>
 </body>
 </html>
