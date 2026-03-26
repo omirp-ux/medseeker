@@ -65,15 +65,15 @@ def adicionar():
 
 @app.route('/listar')
 def listar():
-    page = int(request.args.get('page', 1))
-    limit = int(request.args.get('limit', 5))
-    start = (page - 1) * limit
-    end = start + limit
+    page = request.args.get('page', 1, type=int)
+    limit = request.args.get('limit', 5, type=int)
 
     todas_doencas = [{"nome": k, "sintomas": v} for k, v in banco_de_dados.items()]
     total = len(todas_doencas)
     total_paginas = (total + limit - 1) // limit  # Arredonda para cima
 
+    start = (page - 1) * limit
+    end = start + limit
     doencas_pagina = todas_doencas[start:end]
 
     return jsonify({
