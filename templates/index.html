@@ -55,11 +55,16 @@
         button:hover {
             background: #0056b3;
         }
-        input, select {
+        input, textarea, select {
             padding: 8px;
             margin: 5px;
             border: 1px solid #ddd;
             border-radius: 4px;
+        }
+        #novos_sintomas {
+            width: 100%;
+            height: 100px;
+            resize: vertical;
         }
         table {
             width: 100%;
@@ -86,13 +91,11 @@
     <div class="container">
         <h1>🏥 MedSeeker</h1>
 
-        <!-- Abas -->
         <div>
             <button class="tab-button active" onclick="openTab('busca')">Busca & Adição</button>
             <button class="tab-button" onclick="openTab('cadastradas')">Doenças Cadastradas</button>
         </div>
 
-        <!-- Aba de Busca & Adição -->
         <div id="busca" class="tab active">
             <div class="card">
                 <h2>🔍 Buscar Doenças</h2>
@@ -103,13 +106,12 @@
 
             <div class="card">
                 <h2>➕ Adicionar Nova Doença</h2>
-                <input type="text" id="nova_doenca" placeholder="Nome da doença">
-                <input type="text" id="novos_sintomas" placeholder="Sintomas (separados por vírgula)">
+                <input type="text" id="nova_doenca" placeholder="Nome da doença" style="width: 100%; margin-bottom: 10px;">
+                <textarea id="novos_sintomas" placeholder="Sintomas (separados por vírgula)"></textarea>
                 <button onclick="adicionar()">Adicionar</button>
             </div>
         </div>
 
-        <!-- Aba de Doenças Cadastradas -->
         <div id="cadastradas" class="tab">
             <div class="card">
                 <h2>📋 Doenças Cadastradas</h2>
@@ -139,6 +141,11 @@
 
             document.getElementById(tabName).classList.add("active");
             event.currentTarget.classList.add("active");
+
+            // Se a aba aberta for "cadastradas", carrega as doenças
+            if (tabName === 'cadastradas') {
+                carregarDoencas(1);
+            }
         }
 
         function buscar() {
@@ -221,7 +228,7 @@
                 })
                 .then(() => {
                     alert("Doença editada com sucesso!");
-                    carregarDoencas(); // Recarrega a página atual
+                    carregarDoencas(1);
                 });
             }
         }
@@ -235,7 +242,7 @@
                 })
                 .then(() => {
                     alert("Doença excluída com sucesso!");
-                    carregarDoencas(); // Recarrega a página atual
+                    carregarDoencas(1);
                 });
             }
         }
@@ -266,7 +273,7 @@
                     })
                     .then(() => {
                         alert("Dados importados com sucesso!");
-                        carregarDoencas(1); // Recarrega a primeira página
+                        carregarDoencas(1);
                     });
                 };
                 reader.readAsText(file);

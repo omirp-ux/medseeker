@@ -16,6 +16,7 @@ def carregar_banco():
         with open(ARQUIVO_BANCO, "r", encoding="utf-8") as f:
             return json.load(f)
     else:
+        # Retorna um banco padrão se o arquivo não existir
         return {
             "Gripe": ["Febre", "Tosse", "Cansaço"],
             "Resfriado": ["Coriza", "Tosse Leve", "Dor de Garganta"],
@@ -65,15 +66,15 @@ def adicionar():
 
 @app.route('/listar')
 def listar():
-    page = int(request.args.get('page', 1))
-    limit = int(request.args.get('limit', 5))
-    start = (page - 1) * limit
-    end = start + limit
+    page = request.args.get('page', 1, type=int)
+    limit = request.args.get('limit', 5, type=int)
 
     todas_doencas = [{"nome": k, "sintomas": v} for k, v in banco_de_dados.items()]
     total = len(todas_doencas)
-    total_paginas = (total + limit - 1) // limit  # Arredonda para cima
+    total_paginas = (total + limit - 1) // limit
 
+    start = (page - 1) * limit
+    end = start + limit
     doencas_pagina = todas_doencas[start:end]
 
     return jsonify({
