@@ -1,0 +1,4 @@
+__pycache__/
+*.pyc
+banco_de_dados.json
+venv/

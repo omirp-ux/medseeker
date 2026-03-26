@@ -1,0 +1,68 @@
+from flask import Flask, render_template, request, jsonify
+import json
+import os
+import unicodedata
+
+app = Flask(__name__)
+
+ARQUIVO_BANCO = "banco_de_dados.json"
+
+def remover_acentos(texto):
+    """Remove acentos de uma string"""
+    return unicodedata.normalize('NFD', texto).encode('ascii', errors='ignore').decode('utf-8')
+
+def carregar_banco():
+    if os.path.exists(ARQUIVO_BANCO):
+        with open(ARQUIVO_BANCO, "r", encoding="utf-8") as f:
+            return json.load(f)
+    else:
+        # Retorna um banco padrão se o arquivo não existir
+        return {
+            "Gripe": ["Febre", "Tosse", "Cansaço"],
+            "Resfriado": ["Coriza", "Tosse Leve", "Dor de Garganta"],
+            "Dor de Cabeça": ["Dor latejante", "Náusea", "Sensibilidade à luz"],
+            "Apendicite Aguda": ["Febre Baixa", "Nauseas", "Dor Abdominal"]
+        }
+
+def salvar_banco(banco):
+    with open(ARQUIVO_BANCO, "w", encoding="utf-8") as f:
+        json.dump(banco, f, ensure_ascii=False, indent=4)
+
+banco_de_dados = carregar_banco()
+
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+@app.route('/buscar', methods=['POST'])
+def buscar():
+    dados = request.json
+    sintomas_usuario = [remover_acentos(s.strip().lower()) for s in dados.get("sintomas", [])]
+    resultados = []
+
+    for doenca, sintomas in banco_de_dados.items():
+        match_count = 0
+        for sintoma_usuario in sintomas_usuario:
+            for sintoma_cadastrado in sintomas:
+                if sintoma_usuario in remover_acentos(sintoma_cadastrado.lower()):
+                    match_count += 1
+                    break
+
+        if match_count > 0:
+            prob = (match_count / len(sintomas)) * 100
+            resultados.append({"doenca": doenca, "probabilidade": round(prob, 2)})
+
+    resultados.sort(key=lambda x: x["probabilidade"], reverse=True)
+    return jsonify(resultados)
+
+@app.route('/adicionar', methods=['POST'])
+def adicionar():
+    dados = request.json
+    nome = dados.get("nome").capitalize()
+    sintomas = [s.strip().capitalize() for s in dados.get("sintomas", [])]
+    banco_de_dados[nome] = sintomas
+    salvar_banco(banco_de_dados)
+    return jsonify({"status": "sucesso"})
+
+if __name__ == '__main__':
+    app.run(debug=True)
