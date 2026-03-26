@@ -1,0 +1,24 @@
+{
+    "Gripe": [
+        "Febre",
+        "Tosse",
+        "Cansaço"
+    ],
+    "Resfriado": [
+        "Coriza",
+        "Tosse Leve",
+        "Dor de Garganta"
+    ],
+    "Dor de Cabeça": [
+        "Dor latejante",
+        "Náusea",
+        "Sensibilidade à luz"
+    ],
+    "Apendicite aguda": [
+        "Náuseas",
+        "Vômitos",
+        "Perda de apetite",
+        "Febre baixa",
+        "Inchaço abdominal"
+    ]
+}
