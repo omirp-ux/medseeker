@@ -19,6 +19,23 @@
             border-radius: 8px;
             box-shadow: 0 0 10px rgba(0,0,0,0.1);
         }
+        .tab {
+            display: none;
+        }
+        .tab.active {
+            display: block;
+        }
+        .tab-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            border-radius: 5px 5px 0 0;
+        }
+        .tab-button.active {
+            background: #0056b3;
+        }
         .card {
             border: 1px solid #ddd;
             padding: 15px;
@@ -30,10 +47,10 @@
             background: #007bff;
             color: white;
             border: none;
-            padding: 10px 15px;
+            padding: 8px 12px;
             border-radius: 5px;
             cursor: pointer;
-            margin: 5px;
+            margin: 3px;
         }
         button:hover {
             background: #0056b3;
@@ -57,39 +74,73 @@
         th {
             background: #f2f2f2;
         }
+        .pagination {
+            margin-top: 10px;
+        }
+        .pagination button {
+            margin: 2px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>🏥 MedSeeker</h1>
 
-        <!-- Buscar Doenças -->
-        <div class="card">
-            <h2>🔍 Buscar Doenças</h2>
-            <input type="text" id="entrada_sintomas" placeholder="Ex: Febre, Tosse" style="width: 70%;">
-            <button onclick="buscar()">Buscar</button>
-            <div id="resultado_busca" class="resultado"></div>
+        <!-- Abas -->
+        <div>
+            <button class="tab-button active" onclick="openTab('busca')">Busca & Adição</button>
+            <button class="tab-button" onclick="openTab('cadastradas')">Doenças Cadastradas</button>
         </div>
 
-        <!-- Adicionar Nova Doença -->
-        <div class="card">
-            <h2>➕ Adicionar Nova Doença</h2>
-            <input type="text" id="nova_doenca" placeholder="Nome da doença">
-            <input type="text" id="novos_sintomas" placeholder="Sintomas (separados por vírgula)">
-            <button onclick="adicionar()">Adicionar</button>
+        <!-- Aba de Busca & Adição -->
+        <div id="busca" class="tab active">
+            <div class="card">
+                <h2>🔍 Buscar Doenças</h2>
+                <input type="text" id="entrada_sintomas" placeholder="Ex: Febre, Tosse" style="width: 70%;">
+                <button onclick="buscar()">Buscar</button>
+                <div id="resultado_busca" class="resultado"></div>
+            </div>
+
+            <div class="card">
+                <h2>➕ Adicionar Nova Doença</h2>
+                <input type="text" id="nova_doenca" placeholder="Nome da doença">
+                <input type="text" id="novos_sintomas" placeholder="Sintomas (separados por vírgula)">
+                <button onclick="adicionar()">Adicionar</button>
+            </div>
         </div>
 
- e Editar Doenças -->
-        <div class="card">
-            <h2>📋 Doenças Cadastradas</h2>
-            <button onclick="carregarDoencas()">Atualizar Lista</button>
-            <button onclick="exportarDados()">Exportar Dados</button>
-            <input type="file" id="arquivo_importar" accept=".json" onchange="importarDados()">
-            <div id="lista_doencas"></div>
+        <!-- Aba de Doenças Cadastradas -->
+        <div id="cadastradas" class="tab">
+            <div class="card">
+                <h2>📋 Doenças Cadastradas</h2>
+                <button onclick="carregarDoencas(1)">Atualizar Lista</button>
+                <button onclick="exportarDados()">Exportar Dados</button>
+                <input type="file" id="arquivo_importar" accept=".json" onchange="importarDados()">
+
+                <div id="lista_doencas"></div>
+                <div id="paginacao" class="pagination"></div>
+            </div>
         </div>
     </div>
 
     <script>
+        let totalPaginas = 0;
+
+        function openTab(tabName) {
+            const tabs = document.getElementsByClassName("tab");
+            for (let i = 0; i < tabs.length; i++) {
+                tabs[i].classList.remove("active");
+            }
+
+            const buttons = document.getElementsByClassName("tab-button");
+            for (let i = 0; i < buttons.length; i++) {
+                buttons[i].classList.remove("active");
+            }
+
+            document.getElementById(tabName).classList.add("active");
+            event.currentTarget.classList.add("active");
+        }
+
         function buscar() {
             const entrada = document.getElementById("entrada_sintomas").value;
             const sintomas = entrada.split(",").map(s => s.trim());
@@ -121,28 +172,43 @@
             })
             .then(() => {
                 alert("Doença adicionada com sucesso!");
-                carregarDoencas();
+                document.getElementById("nova_doenca").value = "";
+                document.getElementById("novos_sintomas").value = "";
             });
         }
 
-        function carregarDoencas() {
-            fetch("/listar")
+        function carregarDoencas(pagina = 1) {
+            fetch(`/listar?page=${pagina}&limit=5`)
             .then(response => response.json())
             .then(data => {
+                totalPaginas = data.total_paginas;
                 let html = "<table><tr><th>Doença</th><th>Sintomas</th><th>Ações</th></tr>";
-                for (let doenca in data) {
+                data.doencas.forEach(item => {
                     html += `<tr>
-                        <td>${doenca}</td>
-                        <td>${data[doenca].join(", ")}</td>
+                        <td>${item.nome}</td>
+                        <td>${item.sintomas.join(", ")}</td>
                         <td>
-                            <button onclick="editar('${doenca}', ['${data[doenca].join("','")}'])">Editar</button>
-                            <button onclick="excluir('${doenca}')">Excluir</button>
+                            <button onclick="editar('${item.nome}', ['${item.sintomas.join("','")}'])">Editar</button>
+                            <button onclick="excluir('${item.nome}')">Excluir</button>
                         </td>
                     </tr>`;
-                }
+                });
                 html += "</table>";
                 document.getElementById("lista_doencas").innerHTML = html;
+                gerarPaginacao(pagina);
             });
+        }
+
+        function gerarPaginacao(paginaAtual) {
+            let html = '';
+            for (let i = 1; i <= totalPaginas; i++) {
+                if (i === paginaAtual) {
+                    html += `<button onclick="carregarDoencas(${i})" disabled>${i}</button>`;
+                } else {
+                    html += `<button onclick="carregarDoencas(${i})">${i}</button>`;
+                }
+            }
+            document.getElementById("paginacao").innerHTML = html;
         }
 
         function editar(nome, sintomas) {
@@ -155,7 +221,7 @@
                 })
                 .then(() => {
                     alert("Doença editada com sucesso!");
-                    carregarDoencas();
+                    carregarDoencas(); // Recarrega a página atual
                 });
             }
         }
@@ -169,7 +235,7 @@
                 })
                 .then(() => {
                     alert("Doença excluída com sucesso!");
-                    carregarDoencas();
+                    carregarDoencas(); // Recarrega a página atual
                 });
             }
         }
@@ -200,17 +266,12 @@
                     })
                     .then(() => {
                         alert("Dados importados com sucesso!");
-                        carregarDoencas();
+                        carregarDoencas(1); // Recarrega a primeira página
                     });
                 };
                 reader.readAsText(file);
             }
         }
-
-        // Carregar doenças ao abrir a página
-        window.onload = function() {
-            carregarDoencas();
-        };
     </script>
 </body>
 </html>
